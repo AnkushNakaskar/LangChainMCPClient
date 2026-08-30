@@ -1,0 +1,42 @@
+server:
+  adminMinThreads: 1
+  adminMaxThreads: 64
+  applicationConnectors:
+    - type: http
+      port: 8090
+  adminConnectors:
+    - type: http
+      port: 8089
+defaultSize: 5
+llm:
+  # LOCAL = Ollama / llama.cpp on this machine, REMOTE = hosted provider (apiKey mandatory)
+  type: LOCAL
+  baseUrl: http://localhost:11434/v1
+  modelName: hf.co/unsloth/Llama-3.2-1B-Instruct-GGUF:UD-Q4_K_XL
+  apiKey: not-needed
+  temperature: 0.0
+  timeoutSeconds: 120
+  maxMemoryMessages: 10
+  # a small model that has its tool calls refused will otherwise keep calling them
+  maxToolCallingRoundTrips: 5
+  logRequests: false
+  logResponses: false
+mcpClient:
+  enabled: true
+  url: http://localhost:8088/mcp
+  key: langchain-mcp-server
+  timeoutSeconds: 30
+  logRequests: false
+  logResponses: false
+swagger:
+  resourcePackage: com.langchain.central.resource
+logging:
+  level: INFO
+  loggers:
+    com.langchain: INFO
+    org.hibernate: DEBUG
+  appenders:
+    - type: console
+      threshold: INFO
+      timeZone: IST
+      logFormat: "%(%-5level) %X{X-TRACE-ID}  %X{span_id} [%date] [%thread] [%logger{0}]: %message%n"

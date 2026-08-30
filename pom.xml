@@ -1,0 +1,224 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>com.langchain.central</groupId>
+    <artifactId>langchain_demo</artifactId>
+    <version>1.0-SNAPSHOT</version>
+
+    <name>LangChain Demo</name>
+
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <maven.compiler.source>17</maven.compiler.source>
+        <maven.compiler.target>17</maven.compiler.target>
+        <maven.deploy.plugin>2.8.2</maven.deploy.plugin>
+        <maven.javadoc.skip>true</maven.javadoc.skip>
+        <maven.shade.version>3.3.0</maven.shade.version>
+        <aspectjrt.version>1.9.6</aspectjrt.version>
+
+        <lombok.maven.version>1.18.20.0</lombok.maven.version>
+        <maven.deploy.plugin>2.8.2</maven.deploy.plugin>
+        <maven.javadoc.skip>true</maven.javadoc.skip>
+        <maven.deploy.plugin>2.8.2</maven.deploy.plugin>
+        <maven.shade.version>3.3.0</maven.shade.version>
+
+        <dropwizard.version>2.1.12</dropwizard.version>
+        <dropwizard.swagger.version>2.0.28-1</dropwizard.swagger.version>
+        <data.provider.version>2.15</data.provider.version>
+
+        <!-- Hystrix Versions -->
+        <hystrix.version>1.5.18</hystrix.version>
+        <hystrix.function.wrapper.version>1.0.0</hystrix.function.wrapper.version>
+        <hystrix.dropwizard.version>0.4</hystrix.dropwizard.version>
+        <lombok.version>1.18.22</lombok.version>
+        <guava.version>30.1.1-jre</guava.version>
+
+        <jackson.version>2.12.1</jackson.version>
+        <metrics.version>4.0.5</metrics.version>
+        <guice.version>5.1.0</guice.version>
+        <dropwizard.guicey.version>5.4.2</dropwizard.guicey.version>
+
+        <langchain4j.version>1.19.0</langchain4j.version> <!-- Use the stableVersion from the document -->
+
+
+    </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.slf4j</groupId>
+                <artifactId>slf4j-api</artifactId>
+                <version>1.7.36</version>
+            </dependency>
+            <dependency>
+                <groupId>org.glassfish.jersey</groupId>
+                <artifactId>jersey-bom</artifactId>
+                <version>2.41</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+
+    <dependencies>
+
+        <!-- LangChain4j Core -->
+        <dependency>
+            <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j</artifactId>
+            <version>${langchain4j.version}</version>
+        </dependency>
+        <!-- LangChain4j OpenAI integration (for Ollama's compatible API) -->
+        <dependency>
+            <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j-open-ai</artifactId>
+            <version>${langchain4j.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j-mcp</artifactId>
+            <version>1.19.0-beta29</version>
+        </dependency>
+        <!-- For @Tool annotations -->
+
+        <dependency>
+            <groupId>javax.ws.rs</groupId>
+            <artifactId>javax.ws.rs-api</artifactId>
+            <version>2.1</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <version>${lombok.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>io.dropwizard</groupId>
+            <artifactId>dropwizard-core</artifactId>
+            <version>${dropwizard.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.dropwizard</groupId>
+            <artifactId>dropwizard-metrics</artifactId>
+            <version>${dropwizard.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.dropwizard</groupId>
+            <artifactId>dropwizard-jackson</artifactId>
+            <version>${dropwizard.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.dropwizard</groupId>
+            <artifactId>dropwizard-validation</artifactId>
+            <version>${dropwizard.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.dropwizard</groupId>
+            <artifactId>dropwizard-forms</artifactId>
+            <version>${dropwizard.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.netflix.hystrix</groupId>
+            <artifactId>hystrix-core</artifactId>
+            <version>${hystrix.version}</version>
+        </dependency>
+
+
+        <dependency>
+            <artifactId>guice</artifactId>
+            <groupId>com.google.inject</groupId>
+            <version>${guice.version}</version>
+        </dependency>
+        <dependency>
+            <artifactId>dropwizard-guicey</artifactId>
+            <groupId>ru.vyarus</groupId>
+            <version>${dropwizard.guicey.version}</version>
+        </dependency>
+
+        <dependency>
+            <artifactId>dropwizard-swagger</artifactId>
+            <exclusions>
+                <exclusion>
+                    <artifactId>reflections</artifactId>
+                    <groupId>org.reflections</groupId>
+                </exclusion>
+                <exclusion>
+                    <artifactId>guava</artifactId>
+                    <groupId>com.google.guava</groupId>
+                </exclusion>
+            </exclusions>
+            <groupId>in.vectorpro.dropwizard</groupId>
+            <version>${dropwizard.swagger.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>io.appform.core</groupId>
+            <artifactId>hystrix-function-wrapper</artifactId>
+            <version>1.1.9</version>
+        </dependency>
+
+    </dependencies>
+
+    <build>
+        <finalName>${project.artifactId}</finalName>
+        <plugins>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.11.0</version>
+                <configuration>
+                    <!-- keeps real parameter names so @Tool arguments aren't exposed as arg0, arg1 -->
+                    <parameters>true</parameters>
+                </configuration>
+            </plugin>
+
+            <plugin>
+                <artifactId>maven-shade-plugin</artifactId>
+                <configuration>
+                    <createDependencyReducedPom>true</createDependencyReducedPom>
+                    <filters>
+                        <filter>
+                            <artifact>*:*</artifact>
+                            <excludes>
+                                <exclude>META-INF/*.SF</exclude>
+                                <exclude>META-INF/*.DSA</exclude>
+                                <exclude>META-INF/*.RSA</exclude>
+                            </excludes>
+                        </filter>
+                    </filters>
+                </configuration>
+                <executions>
+                    <execution>
+                        <configuration>
+                            <transformers>
+                                <transformer
+                                implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
+                                <transformer
+                                implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+                                    <manifestEntries>
+                                        <Build-Number>${build.number}</Build-Number>
+                                        <Git-Commit>${build.revision}</Git-Commit>
+                                        <Main-Class>com.langchain.central.LangchainApp</Main-Class>
+                                    </manifestEntries>
+                                </transformer>
+                            </transformers>
+                        </configuration>
+                        <goals>
+                            <goal>shade</goal>
+                        </goals>
+                        <phase>package</phase>
+                    </execution>
+                </executions>
+                <groupId>org.apache.maven.plugins</groupId>
+                <version>${maven.shade.version}</version>
+            </plugin>
+        </plugins>
+    </build>
+</project>
