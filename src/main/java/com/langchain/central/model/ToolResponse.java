@@ -18,7 +18,7 @@ import lombok.NoArgsConstructor;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class ToolResponse {
 
-    /** Tool method name, e.g. {@code getMovieGenre}. */
+    /** Tool method name, e.g. {@code get_recent_commits}. */
     private String name;
 
     /** JSON arguments the model passed to the tool. */

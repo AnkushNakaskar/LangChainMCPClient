@@ -3,7 +3,7 @@ package com.langchain.central.service;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import com.langchain.central.assistance.AssistanceType;
-import com.langchain.central.assistance.MovieAssistance;
+import com.langchain.central.assistance.GitAssistance;
 import com.langchain.central.config.LLMConfig;
 import com.langchain.central.mcp.ManagedMcpClient;
 import com.langchain.central.model.AIRequest;
@@ -37,7 +37,7 @@ public class LangChainService {
 
     private final LLMConfig llmConfig;
     private final ManagedMcpClient mcpClient;
-    private final Map<String, MovieAssistance> assistants = new ConcurrentHashMap<>();
+    private final Map<String, GitAssistance> assistants = new ConcurrentHashMap<>();
 
     @Inject
     public LangChainService(final LLMConfig llmConfig, final ManagedMcpClient mcpClient) {
@@ -63,7 +63,7 @@ public class LangChainService {
                 sessionId, assistanceType, modelName,
                 request.isUseTools() ? "enabled" : "disabled");
 
-        final MovieAssistance assistant = assistantFor(modelName, request.isUseTools());
+        final GitAssistance assistant = assistantFor(modelName, request.isUseTools());
         final Result<String> result = assistant.chat(sessionId, request.getPrompt());
 
         return LLMConvertors.toAIResponse(
@@ -71,15 +71,15 @@ public class LangChainService {
     }
 
     /** Assistants are cached per model and tool combination; see the class comment. */
-    private MovieAssistance assistantFor(final String modelName, final boolean useTools) {
+    private GitAssistance assistantFor(final String modelName, final boolean useTools) {
         return assistants.computeIfAbsent(modelName + "|tools=" + useTools,
                 ignored -> build(modelName, useTools));
     }
 
-    private MovieAssistance build(final String modelName, final boolean useTools) {
+    private GitAssistance build(final String modelName, final boolean useTools) {
         final ChatModel model = LLMConvertors.toChatModel(llmConfig, modelName);
 
-        final AiServices<MovieAssistance> builder = AiServices.builder(MovieAssistance.class)
+        final AiServices<GitAssistance> builder = AiServices.builder(GitAssistance.class)
                 .chatModel(model)
                 // one memory per sessionId, so concurrent conversations do not read each other
                 .chatMemoryProvider(sessionId ->
@@ -91,7 +91,7 @@ public class LangChainService {
                     // tools; langchain4j allows a hundred rounds by default
                     .maxToolCallingRoundTrips(llmConfig.getMaxToolCallingRoundTrips());
         }
-        log.info("Built movie assistant for model {} with MCP tools {}", modelName,
+        log.info("Built Git assistant for model {} with MCP tools {}", modelName,
                 useTools && mcpClient.isEnabled());
         return builder.build();
     }

@@ -30,7 +30,7 @@ import lombok.NoArgsConstructor;
 public class AIRequest {
 
     public static final String DEFAULT_SESSION_ID = "default";
-    public static final AssistanceType DEFAULT_ASSISTANT = AssistanceType.MOVIE;
+    public static final AssistanceType DEFAULT_ASSISTANT = AssistanceType.GIT;
 
     /** The user message sent to the model. */
     @NotBlank
@@ -46,7 +46,7 @@ public class AIRequest {
     @Builder.Default
     private String sessionId = DEFAULT_SESSION_ID;
 
-    /** Which assistant handles the prompt, and therefore which tools are offered. Defaults to MOVIE. */
+    /** Assistant identifier. This Git-only client defaults to GIT. */
     @Builder.Default
     private AssistanceType assistant = DEFAULT_ASSISTANT;
 

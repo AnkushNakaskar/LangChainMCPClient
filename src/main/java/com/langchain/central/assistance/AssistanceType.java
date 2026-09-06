@@ -7,9 +7,6 @@ package com.langchain.central.assistance;
  */
 public enum AssistanceType {
 
-    /** Answers questions about the movie database. */
-    MOVIE,
-
-    /** Answers questions about the GIT. */
-    GIT,
+    /** Answers questions about Git repositories. */
+    GIT
 }
