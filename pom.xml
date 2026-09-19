@@ -44,6 +44,12 @@
 
         <langchain4j.version>1.19.0</langchain4j.version> <!-- Use the stableVersion from the document -->
 
+        <!-- React UI build. Node is downloaded into ui/node, so no local install is needed. -->
+        <frontend.plugin.version>1.15.1</frontend.plugin.version>
+        <node.version>v22.14.0</node.version>
+        <ui.directory>${project.basedir}/ui</ui.directory>
+        <skip.ui.build>false</skip.ui.build>
+
 
     </properties>
 
@@ -123,6 +129,12 @@
             <artifactId>dropwizard-forms</artifactId>
             <version>${dropwizard.version}</version>
         </dependency>
+        <!-- serves the React bundle in src/main/resources/assets under /ui -->
+        <dependency>
+            <groupId>io.dropwizard</groupId>
+            <artifactId>dropwizard-assets</artifactId>
+            <version>${dropwizard.version}</version>
+        </dependency>
         <dependency>
             <groupId>com.netflix.hystrix</groupId>
             <artifactId>hystrix-core</artifactId>
@@ -168,6 +180,56 @@
     <build>
         <finalName>${project.artifactId}</finalName>
         <plugins>
+
+            <!--
+              Builds the React app into src/main/resources/assets before resources are
+              copied, so `mvn package` alone produces a jar that already serves the UI.
+              Skip it with -Dskip.ui.build=true when only the Java side changed.
+            -->
+            <plugin>
+                <groupId>com.github.eirslett</groupId>
+                <artifactId>frontend-maven-plugin</artifactId>
+                <version>${frontend.plugin.version}</version>
+                <configuration>
+                    <workingDirectory>${ui.directory}</workingDirectory>
+                    <!-- Node lives under target/: the installer cleans this directory, so
+                         pointing it at ui/ would wipe the UI sources. -->
+                    <installDirectory>${project.build.directory}/frontend</installDirectory>
+                    <skip>${skip.ui.build}</skip>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>install-node-and-npm</id>
+                        <goals>
+                            <goal>install-node-and-npm</goal>
+                        </goals>
+                        <phase>generate-resources</phase>
+                        <configuration>
+                            <nodeVersion>${node.version}</nodeVersion>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>npm-install</id>
+                        <goals>
+                            <goal>npm</goal>
+                        </goals>
+                        <phase>generate-resources</phase>
+                        <configuration>
+                            <arguments>install --no-audit --no-fund</arguments>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>npm-build</id>
+                        <goals>
+                            <goal>npm</goal>
+                        </goals>
+                        <phase>generate-resources</phase>
+                        <configuration>
+                            <arguments>run build</arguments>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
 
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
