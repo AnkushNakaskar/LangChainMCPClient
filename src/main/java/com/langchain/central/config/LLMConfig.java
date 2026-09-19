@@ -49,11 +49,17 @@ public class LLMConfig {
     @Builder.Default
     private int timeoutSeconds = 120;
 
-    /** How many messages of history are replayed to the model per conversation. */
+    /**
+     * How many messages of history are replayed to the model per conversation.
+     *
+     * <p>History is dropped a whole turn at a time, so a small window costs older context but
+     * never leaves a tool result without the question it belongs to. A turn that is still being
+     * answered is kept whole even when it is larger than this value.
+     */
     @Positive
     @JsonProperty("maxMemoryMessages")
     @Builder.Default
-    private int maxMemoryMessages = 10;
+    private int maxMemoryMessages = 50;
 
     /**
      * How many times the model may call tools within one answer. A small model that has its calls

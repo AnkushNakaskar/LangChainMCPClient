@@ -6,10 +6,10 @@ import com.langchain.central.assistance.AssistanceType;
 import com.langchain.central.assistance.GitAssistance;
 import com.langchain.central.config.LLMConfig;
 import com.langchain.central.mcp.ManagedMcpClient;
+import com.langchain.central.memory.TurnWindowChatMemory;
 import com.langchain.central.model.AIRequest;
 import com.langchain.central.model.AIResponse;
 import com.langchain.central.util.LLMConvertors;
-import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.Result;
@@ -82,8 +82,8 @@ public class LangChainService {
         final AiServices<GitAssistance> builder = AiServices.builder(GitAssistance.class)
                 .chatModel(model)
                 // one memory per sessionId, so concurrent conversations do not read each other
-                .chatMemoryProvider(sessionId ->
-                        MessageWindowChatMemory.withMaxMessages(llmConfig.getMaxMemoryMessages()));
+                .chatMemoryProvider(sessionId -> TurnWindowChatMemory.withMaxMessages(
+                        sessionId, llmConfig.getMaxMemoryMessages()));
 
         if (useTools && mcpClient.isEnabled()) {
             builder.toolProvider(mcpClient.toolProvider())
