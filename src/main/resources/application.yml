@@ -12,7 +12,8 @@ llm:
   # LOCAL = Ollama / llama.cpp on this machine, REMOTE = hosted provider (apiKey mandatory)
   type: LOCAL
   baseUrl: http://localhost:11434/v1
-  modelName: hf.co/unsloth/Llama-3.2-1B-Instruct-GGUF:UD-Q4_K_XL
+#  modelName: hf.co/unsloth/Llama-3.2-1B-Instruct-GGUF:UD-Q4_K_XL
+  modelName: qwen3.5-9b
   apiKey: not-needed
   temperature: 0.0
   timeoutSeconds: 120
