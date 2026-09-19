@@ -45,7 +45,7 @@ public class LangChainResource {
     @Operation(summary = "Chat with the Git assistant")
     @RequestBody(description = "Prompt, and optionally a sessionId, a model override and useTool")
     public AIResponse chat(@Valid @NotNull final AIRequest request) {
-        log.info("Chat requested on session {}", request.getSessionId());
+        log.info("Chat requested on session {}", request);
         try {
             final AIResponse response = langChainService.chat(request);
             log.info("Assistant answered with {} characters and {} tool calls",

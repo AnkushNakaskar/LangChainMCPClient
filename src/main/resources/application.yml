@@ -23,7 +23,7 @@ llm:
   logResponses: false
 mcpClient:
   enabled: true
-  url: http://localhost:8088/mcp
+  url: http://localhost:9088/mcp
   key: langchain-mcp-server
   timeoutSeconds: 30
   logRequests: false
