@@ -1,6 +1,7 @@
 package com.langchain.central.config;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import java.util.Map;
 import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.NotNull;
 import javax.validation.constraints.Positive;
@@ -69,6 +70,38 @@ public class LLMConfig {
     @JsonProperty("maxToolCallingRoundTrips")
     @Builder.Default
     private int maxToolCallingRoundTrips = 5;
+
+    /**
+     * Upper bound on the tokens the model may produce for one answer.
+     *
+     * <p>Left unset the server decides, and a server with a small default truncates long answers.
+     * A truncated answer comes back with {@code doneReason=length} and, when the truncation hits
+     * immediately after a tool call, with no text at all.
+     */
+    @JsonProperty("maxTokens")
+    private Integer maxTokens;
+
+    /**
+     * How much of the token budget a reasoning model may spend on thinking before it answers.
+     *
+     * <p>A thinking model writes its reasoning into a separate field and only then starts the
+     * answer. When the budget runs out during the thinking the reply carries no answer at all,
+     * which is what happens with a long tool result. {@code none} turns thinking off and is the
+     * right setting here, because the tool has already done the work the model would reason about.
+     */
+    @JsonProperty("reasoningEffort")
+    private String reasoningEffort;
+
+    /**
+     * Extra fields merged into the chat completion request body, for settings the OpenAI schema
+     * does not cover.
+     *
+     * <p>Only fields the server actually reads have an effect. Ollama in particular ignores
+     * {@code options} here, so its context window cannot be set from this client; see the note
+     * on {@code llm.modelName} in application.yml.
+     */
+    @JsonProperty("customParameters")
+    private Map<String, Object> customParameters;
 
     @JsonProperty("logRequests")
     @Builder.Default

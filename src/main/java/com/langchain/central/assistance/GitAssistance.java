@@ -22,7 +22,7 @@ public interface GitAssistance extends Assistance {
             as "type", "required", or "properties" as arguments.
 
             Turn tool results into a clear, explanatory response instead of merely repeating raw data.
-            For a commit history result, include every returned commit and present:
+            For example a commit history result, include every returned commit and present:
             - the short commit hash
             - the date and time
             - the author
@@ -35,6 +35,11 @@ public interface GitAssistance extends Assistance {
             For status, diff, branch, log, or other Git results, explain what the output means and call
             out important consequences or next actions. Be accurate and do not invent details that are
             absent from the tool result.
+
+            When a tool result contains reporting instructions, such as a required finding format or a
+            grouping, follow them exactly. For a merge request review, cover every changed file, group
+            the findings per file, say "No findings." for a file that is clean, and keep each finding on
+            one line as the tool asks.
 
             Answer in readable Markdown prose. Never expose tool-call JSON or answer with raw JSON
             unless the user explicitly requests JSON.

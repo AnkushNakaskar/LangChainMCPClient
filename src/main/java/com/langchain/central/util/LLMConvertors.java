@@ -12,15 +12,18 @@ import dev.langchain4j.service.tool.ToolExecution;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * Conversions between langchain4j types and this application's API/config types.
  *
  * @author ankush.nakaskar
  */
+@Slf4j
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public final class LLMConvertors {
 
@@ -35,15 +38,26 @@ public final class LLMConvertors {
         final String resolvedModelName =
                 (modelName == null || modelName.isBlank()) ? llmConfig.getModelName() : modelName;
 
-        return OpenAiChatModel.builder()
+        final OpenAiChatModel.OpenAiChatModelBuilder builder = OpenAiChatModel.builder()
                 .baseUrl(llmConfig.getBaseUrl())
                 .modelName(resolvedModelName)
                 .apiKey(llmConfig.resolveApiKey())
                 .temperature(llmConfig.getTemperature())
                 .timeout(Duration.ofSeconds(llmConfig.getTimeoutSeconds()))
                 .logRequests(llmConfig.isLogRequests())
-                .logResponses(llmConfig.isLogResponses())
-                .build();
+                .logResponses(llmConfig.isLogResponses());
+
+        if (llmConfig.getMaxTokens() != null) {
+            builder.maxTokens(llmConfig.getMaxTokens());
+        }
+        if (llmConfig.getReasoningEffort() != null && !llmConfig.getReasoningEffort().isBlank()) {
+            builder.reasoningEffort(llmConfig.getReasoningEffort());
+        }
+        final Map<String, Object> customParameters = llmConfig.getCustomParameters();
+        if (customParameters != null && !customParameters.isEmpty()) {
+            builder.customParameters(customParameters);
+        }
+        return builder.build();
     }
 
     /**
@@ -60,11 +74,12 @@ public final class LLMConvertors {
                                           final long elapsedNanos) {
         final TokenUsage usage = result.tokenUsage();
         final FinishReason finishReason = result.finishReason();
+        final List<ToolResponse> tools = toToolResponses(result);
 
         return AIResponse.builder()
                 .model(modelName)
                 .createdAt(Instant.now())
-                .response(result.content())
+                .response(resolveAnswer(result.content(), tools, finishReason))
                 .sessionId(sessionId)
                 .done(true)
                 .doneReason(finishReason == null ? null : finishReason.name().toLowerCase())
@@ -72,8 +87,29 @@ public final class LLMConvertors {
                 .promptEvalCount(usage == null ? null : usage.inputTokenCount())
                 .evalCount(usage == null ? null : usage.outputTokenCount())
                 .totalTokenCount(usage == null ? null : usage.totalTokenCount())
-                .tools(toToolResponses(result))
+                .tools(tools)
                 .build();
+    }
+
+    /**
+     * The model can stop before writing a single character, typically when the prompt plus the
+     * tool results already fill its context and generation ends with {@code LENGTH}. The caller
+     * would then receive nothing but tool-call JSON, so the tool results are rendered instead.
+     */
+    private static String resolveAnswer(final String content,
+                                        final List<ToolResponse> tools,
+                                        final FinishReason finishReason) {
+        if (content != null && !content.isBlank()) {
+            return content;
+        }
+        if (tools == null || tools.isEmpty()) {
+            return content;
+        }
+        log.warn("Model produced no text after {} tool call(s), finish reason {}; "
+                        + "falling back to the raw tool results. Raise llm.maxTokens or the "
+                        + "server context window to let the model answer.",
+                tools.size(), finishReason);
+        return ToolResultRenderer.render(tools);
     }
 
     /**
