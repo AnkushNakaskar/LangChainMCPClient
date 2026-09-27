@@ -10,6 +10,8 @@ import com.langchain.central.memory.TurnWindowChatMemory;
 import com.langchain.central.model.AIRequest;
 import com.langchain.central.model.AIResponse;
 import com.langchain.central.util.LLMConvertors;
+import dev.langchain4j.memory.ChatMemory;
+import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.Result;
@@ -37,6 +39,7 @@ public class LangChainService {
 
     private final LLMConfig llmConfig;
     private final ManagedMcpClient mcpClient;
+    private final ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
     private final Map<String, GitAssistance> assistants = new ConcurrentHashMap<>();
 
     @Inject
