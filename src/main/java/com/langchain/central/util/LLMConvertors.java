@@ -4,7 +4,10 @@ import com.langchain.central.config.LLMConfig;
 import com.langchain.central.model.AIResponse;
 import com.langchain.central.model.ToolResponse;
 import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.StreamingChatModel;
+import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.openai.OpenAiChatModel;
+import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.service.Result;
@@ -35,12 +38,9 @@ public final class LLMConvertors {
      * @param modelName  model to talk to, may override {@link LLMConfig#getModelName()}
      */
     public static ChatModel toChatModel(final LLMConfig llmConfig, final String modelName) {
-        final String resolvedModelName =
-                (modelName == null || modelName.isBlank()) ? llmConfig.getModelName() : modelName;
-
         final OpenAiChatModel.OpenAiChatModelBuilder builder = OpenAiChatModel.builder()
                 .baseUrl(llmConfig.getBaseUrl())
-                .modelName(resolvedModelName)
+                .modelName(resolveModelName(llmConfig, modelName))
                 .apiKey(llmConfig.resolveApiKey())
                 .temperature(llmConfig.getTemperature())
                 .timeout(Duration.ofSeconds(llmConfig.getTimeoutSeconds()))
@@ -58,6 +58,42 @@ public final class LLMConvertors {
             builder.customParameters(customParameters);
         }
         return builder.build();
+    }
+
+    /**
+     * The streaming counterpart of {@link #toChatModel}, configured from the same settings so that
+     * the streaming and the blocking endpoint answer alike.
+     *
+     * <p>This is a separate client rather than a mode of the other one: the OpenAI-compatible API
+     * streams only when the request asks for it, and langchain4j models that in two types.
+     */
+    public static StreamingChatModel toStreamingChatModel(final LLMConfig llmConfig,
+                                                          final String modelName) {
+        final OpenAiStreamingChatModel.OpenAiStreamingChatModelBuilder builder =
+                OpenAiStreamingChatModel.builder()
+                        .baseUrl(llmConfig.getBaseUrl())
+                        .modelName(resolveModelName(llmConfig, modelName))
+                        .apiKey(llmConfig.resolveApiKey())
+                        .temperature(llmConfig.getTemperature())
+                        .timeout(Duration.ofSeconds(llmConfig.getTimeoutSeconds()))
+                        .logRequests(llmConfig.isLogRequests())
+                        .logResponses(llmConfig.isLogResponses());
+
+        if (llmConfig.getMaxTokens() != null) {
+            builder.maxTokens(llmConfig.getMaxTokens());
+        }
+        if (llmConfig.getReasoningEffort() != null && !llmConfig.getReasoningEffort().isBlank()) {
+            builder.reasoningEffort(llmConfig.getReasoningEffort());
+        }
+        final Map<String, Object> customParameters = llmConfig.getCustomParameters();
+        if (customParameters != null && !customParameters.isEmpty()) {
+            builder.customParameters(customParameters);
+        }
+        return builder.build();
+    }
+
+    private static String resolveModelName(final LLMConfig llmConfig, final String modelName) {
+        return (modelName == null || modelName.isBlank()) ? llmConfig.getModelName() : modelName;
     }
 
     /**
@@ -88,6 +124,45 @@ public final class LLMConvertors {
                 .evalCount(usage == null ? null : usage.outputTokenCount())
                 .totalTokenCount(usage == null ? null : usage.totalTokenCount())
                 .tools(tools)
+                .build();
+    }
+
+    /**
+     * Maps the final event of a streamed answer onto the same {@link AIResponse} the blocking
+     * endpoint returns, so a caller that followed the stream still ends up with one complete,
+     * identically shaped answer.
+     *
+     * @param chatResponse  final response of the stream
+     * @param streamedText  everything that was emitted as tokens, used when the final response
+     *                      carries no text of its own
+     * @param tools         tools called while answering, collected from the stream
+     */
+    public static AIResponse toAIResponse(final ChatResponse chatResponse,
+                                          final String streamedText,
+                                          final List<ToolResponse> tools,
+                                          final String modelName,
+                                          final String sessionId,
+                                          final long elapsedNanos) {
+        final TokenUsage usage = chatResponse == null ? null : chatResponse.tokenUsage();
+        final FinishReason finishReason = chatResponse == null ? null : chatResponse.finishReason();
+        final String finalText = chatResponse == null || chatResponse.aiMessage() == null
+                ? null
+                : chatResponse.aiMessage().text();
+        final String answer = (finalText == null || finalText.isBlank()) ? streamedText : finalText;
+        final List<ToolResponse> calledTools = (tools == null || tools.isEmpty()) ? null : tools;
+
+        return AIResponse.builder()
+                .model(modelName)
+                .createdAt(Instant.now())
+                .response(resolveAnswer(answer, calledTools, finishReason))
+                .sessionId(sessionId)
+                .done(true)
+                .doneReason(finishReason == null ? null : finishReason.name().toLowerCase())
+                .totalDuration(elapsedNanos)
+                .promptEvalCount(usage == null ? null : usage.inputTokenCount())
+                .evalCount(usage == null ? null : usage.outputTokenCount())
+                .totalTokenCount(usage == null ? null : usage.totalTokenCount())
+                .tools(calledTools)
                 .build();
     }
 

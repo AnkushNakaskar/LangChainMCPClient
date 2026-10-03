@@ -50,7 +50,11 @@ public class AIRequest {
     @Builder.Default
     private AssistanceType assistant = DEFAULT_ASSISTANT;
 
-    /** Accepted for payload compatibility. Streaming is not supported by this endpoint. */
+    /**
+     * Accepted for payload compatibility. Streaming is chosen by the endpoint, not by this flag:
+     * {@code POST /langchain/chat} always answers in one piece and
+     * {@code POST /langchain/chat/stream} always answers as Server-Sent Events.
+     */
     @Builder.Default
     private boolean stream = false;
 
