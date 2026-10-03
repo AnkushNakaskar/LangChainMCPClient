@@ -133,17 +133,22 @@ public final class LLMConvertors {
      * identically shaped answer.
      *
      * @param chatResponse  final response of the stream
+     * @param totalUsage    usage of every request the answer took, which is more than the final
+     *                      response reports as soon as the model called a tool
      * @param streamedText  everything that was emitted as tokens, used when the final response
      *                      carries no text of its own
      * @param tools         tools called while answering, collected from the stream
      */
     public static AIResponse toAIResponse(final ChatResponse chatResponse,
+                                          final TokenUsage totalUsage,
                                           final String streamedText,
                                           final List<ToolResponse> tools,
                                           final String modelName,
                                           final String sessionId,
                                           final long elapsedNanos) {
-        final TokenUsage usage = chatResponse == null ? null : chatResponse.tokenUsage();
+        final TokenUsage usage = totalUsage != null
+                ? totalUsage
+                : (chatResponse == null ? null : chatResponse.tokenUsage());
         final FinishReason finishReason = chatResponse == null ? null : chatResponse.finishReason();
         final String finalText = chatResponse == null || chatResponse.aiMessage() == null
                 ? null

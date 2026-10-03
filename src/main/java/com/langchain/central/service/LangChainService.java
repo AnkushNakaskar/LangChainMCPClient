@@ -7,15 +7,19 @@ import com.langchain.central.assistance.GitAssistance;
 import com.langchain.central.config.LLMConfig;
 import com.langchain.central.mcp.ManagedMcpClient;
 import com.langchain.central.mcp.McpStreamEvents;
-import com.langchain.central.memory.TurnWindowChatMemory;
+import com.langchain.central.memory.ChatMemories;
 import com.langchain.central.model.AIRequest;
 import com.langchain.central.model.AIResponse;
 import com.langchain.central.model.StreamEvent;
 import com.langchain.central.util.LLMConvertors;
+import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.Result;
+import dev.langchain4j.service.tool.ToolProviderRequest;
+import dev.langchain4j.service.tool.ToolProviderResult;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
@@ -25,13 +29,19 @@ import lombok.extern.slf4j.Slf4j;
  * Serves chat requests: it owns the assistants, sends the prompt to the configured LLM and maps
  * the outcome onto the API model.
  *
- * <p>An assistant is built once per model and tool combination and then reused, because each one
- * carries an HTTP client and the chat memory of every session it has served. Building one per
- * request would drop the conversation and open a new client each time.
+ * <p>The blocking endpoint hands the conversation to a langchain4j {@code AiServices} proxy. The
+ * streaming endpoint instead drives a {@link StreamingChatModel} directly through
+ * {@link StreamingChatSession}, which is why the memory, the system prompt and the tool-calling
+ * loop are explicit there. Both paths share one {@link ChatMemories} registry, so a session's
+ * history is the same whichever endpoint it was built up over.
  *
- * <p>The tools are handed to langchain4j as plain annotated objects. It reads their {@code @Tool}
- * methods, offers them to the model and executes the ones the model calls, so nothing in this
- * application has to sit between the model and a tool.
+ * <p>An assistant and a streaming model are built once per model and tool combination and then
+ * reused, because each one carries an HTTP client. Building one per request would open a new
+ * client each time.
+ *
+ * <p>The MCP tools are discovered through a langchain4j tool provider. On the blocking path
+ * langchain4j offers them to the model and executes the ones it calls; on the streaming path
+ * {@link StreamingChatSession} does the same by hand.
  *
  * @author ankush.nakaskar
  */
@@ -42,15 +52,19 @@ public class LangChainService {
     private final LLMConfig llmConfig;
     private final ManagedMcpClient mcpClient;
     private final McpStreamEvents mcpStreamEvents;
+    private final ChatMemories chatMemories;
     private final Map<String, GitAssistance> assistants = new ConcurrentHashMap<>();
+    private final Map<String, StreamingChatModel> streamingModels = new ConcurrentHashMap<>();
 
     @Inject
     public LangChainService(final LLMConfig llmConfig,
                             final ManagedMcpClient mcpClient,
-                            final McpStreamEvents mcpStreamEvents) {
+                            final McpStreamEvents mcpStreamEvents,
+                            final ChatMemories chatMemories) {
         this.llmConfig = llmConfig;
         this.mcpClient = mcpClient;
         this.mcpStreamEvents = mcpStreamEvents;
+        this.chatMemories = chatMemories;
         log.info("LLM configured as {} model {} at {}",
                 llmConfig.getType(), llmConfig.getModelName(), llmConfig.getBaseUrl());
     }
@@ -92,6 +106,7 @@ public class LangChainService {
     public void chatStream(final AIRequest request, final Consumer<StreamEvent> sink) {
         final String modelName = request.getModelOrDefault(llmConfig.getModelName());
         final String sessionId = request.getSessionId();
+        final boolean useTools = request.isUseTools() && mcpClient.isEnabled();
 
         log.info("Streaming chat request on session {} for assistant {} using model {}, tools {}",
                 sessionId, request.getAssistant(), modelName,
@@ -107,16 +122,43 @@ public class LangChainService {
         };
         mcpStreamEvents.register(sessionId, trackedSink);
 
-        final ChatStreamSession streamSession =
-                new ChatStreamSession(sessionId, modelName, trackedSink);
+        final StreamingChatSession streamSession = new StreamingChatSession(
+                sessionId,
+                modelName,
+                streamingModelFor(modelName),
+                chatMemories.of(sessionId),
+                useTools ? toolsFor(sessionId, request.getPrompt()) : null,
+                llmConfig.getMaxToolCallingRoundTrips(),
+                trackedSink);
         try {
-            final GitAssistance assistant = assistantFor(modelName, request.isUseTools());
-            streamSession.start(assistant.chatStream(sessionId, request.getPrompt()));
+            streamSession.start(GitAssistance.SYSTEM_PROMPT, request.getPrompt());
         } catch (Exception e) {
-            // building the assistant or handing over the prompt failed, so no callback will ever
-            // fire and the caller would wait for an event that cannot arrive
+            // handing the prompt over failed, so no callback will ever fire and the caller would
+            // wait for an event that cannot arrive
             streamSession.fail(e);
         }
+    }
+
+    /**
+     * Asks the MCP server which tools it offers for this prompt, together with the executor that
+     * runs each of them.
+     *
+     * <p>Resolved per request rather than cached, because the provider is free to offer a
+     * different set per conversation; the MCP client caches the tool list underneath.
+     */
+    private ToolProviderResult toolsFor(final String sessionId, final String prompt) {
+        return mcpClient.toolProvider().provideTools(ToolProviderRequest.builder()
+                .userMessage(UserMessage.from(prompt))
+                .invocationContext(InvocationContext.builder()
+                        .chatMemoryId(sessionId)
+                        .build())
+                .build());
+    }
+
+    /** Streaming clients are cached per model, for the reason given in the class comment. */
+    private StreamingChatModel streamingModelFor(final String modelName) {
+        return streamingModels.computeIfAbsent(modelName,
+                name -> LLMConvertors.toStreamingChatModel(llmConfig, name));
     }
 
     /** Assistants are cached per model and tool combination; see the class comment. */
@@ -127,17 +169,12 @@ public class LangChainService {
 
     private GitAssistance build(final String modelName, final boolean useTools) {
         final ChatModel model = LLMConvertors.toChatModel(llmConfig, modelName);
-        final StreamingChatModel streamingModel =
-                LLMConvertors.toStreamingChatModel(llmConfig, modelName);
 
         final AiServices<GitAssistance> builder = AiServices.builder(GitAssistance.class)
                 .chatModel(model)
-                // the assistant declares both a blocking and a streaming method, and langchain4j
-                // picks the model that matches the method being called
-                .streamingChatModel(streamingModel)
-                // one memory per sessionId, so concurrent conversations do not read each other
-                .chatMemoryProvider(sessionId -> TurnWindowChatMemory.withMaxMessages(
-                        sessionId, llmConfig.getMaxMemoryMessages()));
+                // one memory per sessionId, shared with the streaming path so the two endpoints
+                // continue the same conversation
+                .chatMemoryProvider(chatMemories::of);
 
         if (useTools && mcpClient.isEnabled()) {
             builder.toolProvider(mcpClient.toolProvider())
