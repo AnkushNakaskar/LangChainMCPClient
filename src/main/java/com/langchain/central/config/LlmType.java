@@ -1,7 +1,6 @@
 package com.langchain.central.config;
 
 /**
- * Where the LLM is hosted.
  *
  * @author ankush.nakaskar
  */

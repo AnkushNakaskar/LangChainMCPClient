@@ -9,11 +9,6 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 /**
- * One frame of a streaming chat answer.
- *
- * <p>Every frame carries its {@link StreamEventType} and only the fields that type needs, so the
- * caller can render a token the moment it arrives and still receive the token counts of the whole
- * answer in the final {@code done} frame.
  *
  * @author ankush.nakaskar
  */

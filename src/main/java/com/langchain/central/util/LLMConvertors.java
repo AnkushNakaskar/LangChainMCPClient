@@ -3,10 +3,8 @@ package com.langchain.central.util;
 import com.langchain.central.config.LLMConfig;
 import com.langchain.central.model.AIResponse;
 import com.langchain.central.model.ToolResponse;
-import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.response.ChatResponse;
-import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
 import dev.langchain4j.model.openai.OpenAiStreamingChatModel.OpenAiStreamingChatModelBuilder;
 import dev.langchain4j.model.output.FinishReason;
@@ -23,7 +21,6 @@ import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 /**
- * Conversions between langchain4j types and this application's API/config types.
  *
  * @author ankush.nakaskar
  */
@@ -31,18 +28,12 @@ import lombok.extern.slf4j.Slf4j;
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public final class LLMConvertors {
 
-    /**
-     * Builds an OpenAI-compatible chat model. The same client works for a local Ollama /
-     * llama.cpp server and for a hosted provider, only the config differs.
-     *
-     * @param llmConfig  connection settings from application.yml
-     * @param modelName  model to talk to, may override {@link LLMConfig#getModelName()}
-     */
-    public static StreamingChatModel toChatModel(final LLMConfig llmConfig, final String modelName) {
+
+    public static StreamingChatModel toChatModel(final LLMConfig llmConfig) {
         OpenAiStreamingChatModelBuilder builder = OpenAiStreamingChatModel.builder()
                 .baseUrl(llmConfig.getBaseUrl())
-                .modelName(resolveModelName(llmConfig, modelName))
-                .apiKey(llmConfig.resolveApiKey())
+                .modelName(llmConfig.getModelName())
+                .apiKey(llmConfig.getApiKey())
                 .temperature(llmConfig.getTemperature())
                 .timeout(Duration.ofSeconds(llmConfig.getTimeoutSeconds()))
                 .logRequests(llmConfig.isLogRequests())
@@ -68,13 +59,12 @@ public final class LLMConvertors {
      * <p>This is a separate client rather than a mode of the other one: the OpenAI-compatible API
      * streams only when the request asks for it, and langchain4j models that in two types.
      */
-    public static StreamingChatModel toStreamingChatModel(final LLMConfig llmConfig,
-                                                          final String modelName) {
+    public static StreamingChatModel toStreamingChatModel(final LLMConfig llmConfig) {
         final OpenAiStreamingChatModel.OpenAiStreamingChatModelBuilder builder =
                 OpenAiStreamingChatModel.builder()
                         .baseUrl(llmConfig.getBaseUrl())
-                        .modelName(resolveModelName(llmConfig, modelName))
-                        .apiKey(llmConfig.resolveApiKey())
+                        .modelName(llmConfig.getModelName())
+                        .apiKey(llmConfig.getApiKey())
                         .temperature(llmConfig.getTemperature())
                         .timeout(Duration.ofSeconds(llmConfig.getTimeoutSeconds()))
                         .logRequests(llmConfig.isLogRequests())
@@ -93,9 +83,6 @@ public final class LLMConvertors {
         return builder.build();
     }
 
-    private static String resolveModelName(final LLMConfig llmConfig, final String modelName) {
-        return (modelName == null || modelName.isBlank()) ? llmConfig.getModelName() : modelName;
-    }
 
     /**
      * Maps a langchain4j result onto the Ollama-shaped {@link AIResponse}.

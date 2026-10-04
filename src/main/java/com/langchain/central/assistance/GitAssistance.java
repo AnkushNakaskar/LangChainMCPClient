@@ -6,20 +6,11 @@ import dev.langchain4j.service.SystemMessage;
 import dev.langchain4j.service.UserMessage;
 
 /**
- * Assistant for explaining repository state and performing Git operations through MCP tools.
- *
- * <p>The blocking endpoint reaches the model through the generated proxy below, the streaming one
- * drives the streaming model by hand. Both read {@link #SYSTEM_PROMPT} from here, so the two
- * endpoints cannot drift apart and answer the same question differently.
- *
  * @author ankush.nakaskar
  */
 public interface GitAssistance extends Assistance {
 
-    /**
-     * Held as a constant rather than written inline, because an annotation value has to be a
-     * compile time constant and the streaming path needs the very same prompt.
-     */
+
     String SYSTEM_PROMPT = """
             You are a Git assistant. Help users understand and work with Git repositories.
             Use the available Git tools whenever repository data or a repository operation is needed.

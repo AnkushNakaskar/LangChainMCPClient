@@ -3,11 +3,6 @@ package com.langchain.central.model;
 import com.fasterxml.jackson.annotation.JsonValue;
 
 /**
- * Kinds of server-sent event the streaming chat endpoint emits.
- *
- * <p>The lower case name doubles as the SSE {@code event:} field, so a browser can subscribe to a
- * single kind with {@code EventSource.addEventListener("token", ...)} instead of inspecting every
- * payload.
  *
  * @author ankush.nakaskar
  */

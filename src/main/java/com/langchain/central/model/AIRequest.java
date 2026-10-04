@@ -36,8 +36,6 @@ public class AIRequest {
     @NotBlank
     private String prompt;
 
-    /** Optional per-request override of the configured model. */
-    private String model;
 
     /**
      * Conversation key. Requests sharing a sessionId share chat memory;
@@ -79,15 +77,5 @@ public class AIRequest {
 
     public AssistanceType getAssistant() {
         return assistant == null ? DEFAULT_ASSISTANT : assistant;
-    }
-
-    /**
-     * The model default lives in {@code LLMConfig}, which a request object cannot see, so the
-     * configured name is supplied by the caller and applied here.
-     *
-     * @param configuredModelName model to use when the request does not name one
-     */
-    public String getModelOrDefault(final String configuredModelName) {
-        return (model == null || model.isBlank()) ? configuredModelName : model;
     }
 }

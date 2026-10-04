@@ -111,17 +111,5 @@ public class LLMConfig {
     @Builder.Default
     private boolean logResponses = false;
 
-    /**
-     * Local servers accept (and ignore) any key, so fall back to a placeholder instead of
-     * failing to build the client. Remote providers must supply a real one.
-     */
-    public String resolveApiKey() {
-        if (apiKey != null && !apiKey.isBlank()) {
-            return apiKey;
-        }
-        if (type == LlmType.REMOTE) {
-            throw new IllegalStateException("llm.apiKey is mandatory when llm.type is REMOTE");
-        }
-        return "local-no-key-required";
-    }
+
 }
