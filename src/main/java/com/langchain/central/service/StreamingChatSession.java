@@ -91,6 +91,7 @@ final class StreamingChatSession implements StreamingChatResponseHandler {
 
     /** Appends the turn to the history and sends the first request to the model. */
     void start(final String systemPrompt, final String userMessage) {
+        log.info("Start of the event for  userMessage {}", userMessage);
         emit(StreamEvent.builder()
                 .type(StreamEventType.START)
                 .sessionId(sessionId)
@@ -134,6 +135,7 @@ final class StreamingChatSession implements StreamingChatResponseHandler {
 
     @Override
     public void onPartialResponse(final String token) {
+        log.info("StreamHandler onPartialResponse {}", token);
         answer.append(token);
         emit(StreamEvent.builder()
                 .type(StreamEventType.TOKEN)
@@ -144,6 +146,7 @@ final class StreamingChatSession implements StreamingChatResponseHandler {
 
     @Override
     public void onPartialThinking(final PartialThinking thinking) {
+        log.info("StreamHandler onPartialThinking {}", thinking);
         emit(StreamEvent.builder()
                 .type(StreamEventType.THINKING)
                 .sessionId(sessionId)
@@ -158,7 +161,7 @@ final class StreamingChatSession implements StreamingChatResponseHandler {
      */
     @Override
     public void onPartialToolCall(final PartialToolCall partialToolCall) {
-        log.debug("Session {} is writing the arguments of tool {}: {}",
+        log.info("Session {} is writing the arguments of tool {}: {}",
                 sessionId, partialToolCall.name(), partialToolCall.partialArguments());
     }
 
@@ -169,6 +172,7 @@ final class StreamingChatSession implements StreamingChatResponseHandler {
      */
     @Override
     public void onCompleteToolCall(final CompleteToolCall completeToolCall) {
+        log.info("StreamHandler onCompleteToolCall {}", completeToolCall);
         announce(completeToolCall.toolExecutionRequest());
     }
 
@@ -178,6 +182,7 @@ final class StreamingChatSession implements StreamingChatResponseHandler {
      */
     @Override
     public void onCompleteResponse(final ChatResponse chatResponse) {
+        log.info("StreamHandler onCompleteResponse :: {}", chatResponse);
         if (finished) {
             return;
         }
@@ -205,6 +210,7 @@ final class StreamingChatSession implements StreamingChatResponseHandler {
 
     @Override
     public void onError(final Throwable error) {
+        log.info("Failed to send chat response for session {}", sessionId, error);
         if (finished) {
             log.warn("Ignoring error after the stream of session {} already finished",
                     sessionId, error);
@@ -228,8 +234,8 @@ final class StreamingChatSession implements StreamingChatResponseHandler {
      */
     private void executeTools(final List<ToolExecutionRequest> requests) {
         for (final ToolExecutionRequest request : requests) {
+            log.info("Executing tool execution for session {}", sessionId);
             announce(request);
-
             final String result = execute(request);
             memory.add(ToolExecutionResultMessage.from(request, result));
 

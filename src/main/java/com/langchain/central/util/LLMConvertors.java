@@ -8,6 +8,7 @@ import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
+import dev.langchain4j.model.openai.OpenAiStreamingChatModel.OpenAiStreamingChatModelBuilder;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.service.Result;
@@ -37,8 +38,8 @@ public final class LLMConvertors {
      * @param llmConfig  connection settings from application.yml
      * @param modelName  model to talk to, may override {@link LLMConfig#getModelName()}
      */
-    public static ChatModel toChatModel(final LLMConfig llmConfig, final String modelName) {
-        final OpenAiChatModel.OpenAiChatModelBuilder builder = OpenAiChatModel.builder()
+    public static StreamingChatModel toChatModel(final LLMConfig llmConfig, final String modelName) {
+        OpenAiStreamingChatModelBuilder builder = OpenAiStreamingChatModel.builder()
                 .baseUrl(llmConfig.getBaseUrl())
                 .modelName(resolveModelName(llmConfig, modelName))
                 .apiKey(llmConfig.resolveApiKey())

@@ -168,22 +168,17 @@ public class LangChainService {
     }
 
     private GitAssistance build(final String modelName, final boolean useTools) {
-        final ChatModel model = LLMConvertors.toChatModel(llmConfig, modelName);
+        final StreamingChatModel model = LLMConvertors.toChatModel(llmConfig, modelName);
 
         final AiServices<GitAssistance> builder = AiServices.builder(GitAssistance.class)
-                .chatModel(model)
-                // one memory per sessionId, shared with the streaming path so the two endpoints
-                // continue the same conversation
+                .streamingChatModel(model)
                 .chatMemoryProvider(chatMemories::of);
 
         if (useTools && mcpClient.isEnabled()) {
             builder.toolProvider(mcpClient.toolProvider())
-                    // a small model that is unhappy with a tool result will otherwise keep calling
-                    // tools; langchain4j allows a hundred rounds by default
                     .maxToolCallingRoundTrips(llmConfig.getMaxToolCallingRoundTrips());
         }
-        log.info("Built Git assistant for model {} with MCP tools {}", modelName,
-                useTools && mcpClient.isEnabled());
+        log.info("Built Git assistant for model {} with MCP tools {}", modelName, useTools && mcpClient.isEnabled());
         return builder.build();
     }
 }
