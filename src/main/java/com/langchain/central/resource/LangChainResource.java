@@ -58,6 +58,35 @@ public class LangChainResource {
     private final LLMConfig llmConfig;
     private final ObjectMapper objectMapper;
 
+
+    /**
+     * @param request prompt, plus optional sessionId, model override and {@code useTool} flag
+     * @return the answer, the token counts and every tool the model called while answering
+     */
+    @POST
+    @Path("/chat/new_stream")
+    @Operation(summary = "Chat with the Git assistant")
+    @RequestBody(description = "Prompt, and optionally a sessionId, a model override and useTool")
+    public AIResponse chatNewStream(@Valid @NotNull final AIRequest request) {
+        log.info("Chat requested on session {}", request);
+        try {
+            final AIResponse response = langChainService.chatStream(request);
+            log.info("Assistant answered with {} characters and {} tool calls",
+                    response.getResponse() == null ? 0 : response.getResponse().length(),
+                    response.getTools() == null ? 0 : response.getTools().size());
+            return response;
+        } catch (Exception e) {
+            log.error("Chat failed for prompt {}", request.getPrompt(), e);
+            return AIResponse.builder()
+                    .createdAt(Instant.now())
+                    .sessionId(request.getSessionId())
+                    .done(false)
+                    .doneReason("error")
+                    .error(e.getMessage())
+                    .build();
+        }
+    }
+
     /**
      * @param request prompt, plus optional sessionId, model override and {@code useTool} flag
      * @return the answer, the token counts and every tool the model called while answering
