@@ -6,29 +6,25 @@ import com.langchain.central.assistance.GitAssistance;
 import com.langchain.central.assistance.GitStreamingAssistance;
 import com.langchain.central.config.LLMConfig;
 import com.langchain.central.mcp.ManagedMcpClient;
-import com.langchain.central.mcp.McpStreamEvents;
 import com.langchain.central.memory.ChatMemories;
 import com.langchain.central.model.AIRequest;
 import com.langchain.central.model.AIResponse;
-import com.langchain.central.model.StreamEvent;
 import com.langchain.central.util.LLMConvertors;
-import dev.langchain4j.data.message.Content;
+import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.model.chat.StreamingChatModel;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.PartialThinking;
 import dev.langchain4j.model.chat.response.PartialToolCall;
+import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.Result;
 import dev.langchain4j.service.TokenStream;
 import dev.langchain4j.service.tool.BeforeToolExecution;
 import dev.langchain4j.service.tool.ToolExecution;
-import dev.langchain4j.service.tool.ToolProviderRequest;
-import dev.langchain4j.service.tool.ToolProviderResult;
-import java.util.List;
 import java.util.concurrent.CompletableFuture;
-import java.util.function.Consumer;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -40,23 +36,63 @@ public class LangChainService {
 
     private final LLMConfig llmConfig;
     private final ManagedMcpClient mcpClient;
-    private final McpStreamEvents mcpStreamEvents;
     private final ChatMemories chatMemories;
 
     @Inject
     public LangChainService(final LLMConfig llmConfig,
                             final ManagedMcpClient mcpClient,
-                            final McpStreamEvents mcpStreamEvents,
                             final ChatMemories chatMemories) {
         this.llmConfig = llmConfig;
         this.mcpClient = mcpClient;
-        this.mcpStreamEvents = mcpStreamEvents;
         this.chatMemories = chatMemories;
     }
 
 
     /**
-     * Sends the prompt to the model and maps the outcome, including any tool the model called,
+     * Streaming with StreamChatModel
+     * onto {@link AIResponse}.
+     */
+    public AIResponse chatStreamWithHandlerOnly(final AIRequest request) {
+        final String sessionId = request.getSessionId();
+        final long startedAt = System.nanoTime();
+        final StreamingChatModel model = LLMConvertors.toChatModel(llmConfig);
+        SystemMessage systemMessage = SystemMessage.from(GitAssistance.SYSTEM_PROMPT);
+        UserMessage userMessage = UserMessage.from(request.getPrompt());
+
+        // 3. Define Custom Chat Parameters (Temperature, Max Tokens, etc.)
+        ChatRequestParameters parameters = ChatRequestParameters.builder()
+                .temperature(0.2)           // Deterministic output
+                .maxOutputTokens(100)        // Token limit
+                .build();
+
+        // 4. Combine Messages and Parameters into a ChatRequest
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(systemMessage, userMessage)
+                .parameters(parameters)
+                .build();
+
+        final CompletableFuture<ChatResponse> futureResponse = new CompletableFuture<>();
+        model.chat(chatRequest, new StreamingChatResponseHandler() {
+            @Override
+            public void onCompleteResponse(ChatResponse completeResponse) {
+                log.info("Ankush :: "+completeResponse.toString());
+                futureResponse.complete(completeResponse);
+            }
+
+            @Override
+            public void onError(Throwable error) {
+                log.error("Streaming chat failed for session {}", sessionId, error);
+                futureResponse.completeExceptionally(error);
+            }
+        });
+        final ChatResponse response = futureResponse.join();
+        final String responseText = response.aiMessage() == null ? null : response.aiMessage().text();
+        return LLMConvertors.toAIResponse(response, response.tokenUsage(), responseText, null,
+                llmConfig.getModelName(), sessionId, System.nanoTime() - startedAt);
+    }
+
+    /**
+     * Streaming with AI service in LangChain4J
      * onto {@link AIResponse}.
      */
     public AIResponse chatStream(final AIRequest request) {
@@ -89,6 +125,7 @@ public class LangChainService {
     }
 
 
+
     /**
      * Sends the prompt to the model and maps the outcome, including any tool the model called,
      * onto {@link AIResponse}.
@@ -101,53 +138,8 @@ public class LangChainService {
         return LLMConvertors.toAIResponse(result, llmConfig.getModelName(), sessionId, System.nanoTime() - startedAt);
     }
 
-    /**
-     * Same conversation as {@link #chat}, delivered one event at a time.
-     *
-     * <p>Returns as soon as the request is on its way: the events are produced by the model
-     * client's threads and handed to {@code sink}, which therefore has to be safe to call from a
-     * thread other than this one. The stream always ends with exactly one {@code done} or
-     * {@code error} event, so the caller has a definite point at which to close the response.
-     *
-     * @param request the prompt, plus the session, model override and tool flag
-     * @param sink receives every event of this answer
-     */
-    public void chatStream(final AIRequest request,
-                           final Consumer<StreamEvent> sink) {
-        final String sessionId = request.getSessionId();
-        final boolean useTools = request.isUseTools() && mcpClient.isEnabled();
-        final Consumer<StreamEvent> trackedSink = event -> {
-            if (event.getType()
-                    .isTerminal()) {
-                mcpStreamEvents.unregister(sessionId);
-            }
-            sink.accept(event);
-        };
-        mcpStreamEvents.register(sessionId, trackedSink);
 
-        final StreamingChatSession streamSession = new StreamingChatSession(sessionId, llmConfig.getModelName(),
-                LLMConvertors.toStreamingChatModel(llmConfig), chatMemories.of(sessionId), useTools
-                                                                                           ? toolsFor(sessionId, request.getPrompt())
-                                                                                           : null,
-                llmConfig.getMaxToolCallingRoundTrips(), trackedSink);
-        try {
-            streamSession.start(GitAssistance.SYSTEM_PROMPT, request.getPrompt());
-        } catch (Exception e) {
-            streamSession.fail(e);
-        }
-    }
 
-//TODO : We need to check what if no matching tool found, then generic response should be invoked
-    private ToolProviderResult toolsFor(final String sessionId,
-                                        final String prompt) {
-        return mcpClient.toolProvider()
-                .provideTools(ToolProviderRequest.builder()
-                        .userMessage(UserMessage.from(prompt))
-                        .invocationContext(InvocationContext.builder()
-                                .chatMemoryId(sessionId)
-                                .build())
-                        .build());
-    }
 
     private GitAssistance getAssistant() {
         final StreamingChatModel model = LLMConvertors.toChatModel(llmConfig);
@@ -160,6 +152,7 @@ public class LangChainService {
         return builder.build();
     }
 
+
     private GitStreamingAssistance getGitStreamingAssistant() {
         final StreamingChatModel model = LLMConvertors.toChatModel(llmConfig);
 
@@ -170,4 +163,5 @@ public class LangChainService {
                 .maxToolCallingRoundTrips(llmConfig.getMaxToolCallingRoundTrips());
         return builder.build();
     }
+
 }
