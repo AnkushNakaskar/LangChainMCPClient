@@ -1,5 +1,6 @@
 package com.langchain.central.agents;
 
+import dev.langchain4j.agentic.Agent;
 import dev.langchain4j.service.SystemMessage;
 import dev.langchain4j.service.TokenStream; // Use TokenStream for streaming or String for synchronous calls
 import dev.langchain4j.service.UserMessage;
@@ -46,6 +47,10 @@ public interface SprintAIAgent {
         Sprint ID / Date Range: {{sprintId}}
         User Request: {{userQuery}}
         """)
+    @Agent(
+            description = "An AI agent that analyzes Jira sprint data, metrics, team progress, and roadmap alignment",
+            outputKey = "sprintAnalysisReport"
+    )
     TokenStream getSprintDetails(
             @V("sprintId") String sprintId,
             @V("jiraDataJson") String jiraDataJson,
