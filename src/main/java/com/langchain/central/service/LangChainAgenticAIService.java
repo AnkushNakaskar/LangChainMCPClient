@@ -32,14 +32,14 @@ import lombok.extern.slf4j.Slf4j;
  */
 @Slf4j
 @Singleton
-public class LangChainService {
+public class LangChainAgenticAIService {
 
     private final LLMConfig llmConfig;
     private final ManagedGitAssistanceMcpClient gitAssistanceMcpClient;
 
     @Inject
-    public LangChainService(final LLMConfig llmConfig,
-                            final ManagedGitAssistanceMcpClient gitAssistanceMcpClient) {
+    public LangChainAgenticAIService(final LLMConfig llmConfig,
+                                     final ManagedGitAssistanceMcpClient gitAssistanceMcpClient) {
         this.llmConfig = llmConfig;
         this.gitAssistanceMcpClient = gitAssistanceMcpClient;
     }

@@ -3,7 +3,7 @@ package com.langchain.central;
 import com.google.inject.Stage;
 import com.langchain.central.module.CoreModule;
 import com.langchain.central.module.ServiceModule;
-import com.langchain.central.resource.LangChainResource;
+import com.langchain.central.resource.LangChainAgenticAIResource;
 import in.vectorpro.dropwizard.swagger.SwaggerBundle;
 import in.vectorpro.dropwizard.swagger.SwaggerBundleConfiguration;
 import io.dropwizard.Application;
@@ -47,7 +47,7 @@ public class LangchainApp extends Application<BasicConfiguration> {
 
         final var injector = InjectorLookup.getInjector(this)
                 .orElseThrow(() -> new IllegalStateException("Guice injector is not available"));
-        environment.jersey().register(injector.getInstance(LangChainResource.class));
+        environment.jersey().register(injector.getInstance(LangChainAgenticAIResource.class));
 
         redirectRootToUi(environment);
     }
