@@ -37,19 +37,13 @@ public class SprintAIAgentResource {
 
 
     @POST
-    @Path("/sprint/chat")
+    @Path("/chat")
     @Operation(summary = "Chat with the Sprint AI agent assistant")
     @RequestBody(description = "Prompt, and optionally a sessionId, a model override and useTool")
     public AIResponse chatWithSprintAIAgent(@Valid @NotNull final AIRequest request) {
         log.info("Sprint AI Agent request:{}", request);
         try {
-
-            return AIResponse.builder()
-                    .response("Success")
-                    .createdAt(Instant.now())
-                    .sessionId(request.getSessionId())
-                    .done(true)
-                    .build();
+            return sprintAIAgentService.chatStream(request);
         } catch (Exception e) {
             log.error("Chat failed for prompt {}", request.getPrompt(), e);
             return AIResponse.builder()
