@@ -4,6 +4,7 @@ import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
 import com.google.inject.Singleton;
 import com.langchain.central.BasicConfiguration;
+import com.langchain.central.config.JiraMcpClientConfig;
 import com.langchain.central.config.LLMConfig;
 import com.langchain.central.config.McpClientConfig;
 
@@ -29,6 +30,12 @@ public class CoreModule extends AbstractModule {
     @Singleton
     public McpClientConfig mcpClientConfig(final BasicConfiguration configuration) {
         return configuration.getMcpClient();
+    }
+
+    @Provides
+    @Singleton
+    public JiraMcpClientConfig jiraMcpClientConfig(final BasicConfiguration configuration) {
+        return configuration.getJiraMcpClient();
     }
 
 }

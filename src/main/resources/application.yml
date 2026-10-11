@@ -32,10 +32,29 @@ llm:
   logRequests: false
   logResponses: false
 mcpClient:
-  enabled: true
+  # the app does not start while this is on and the Git MCP server on 9088 is down
+  enabled: false
   url: http://localhost:9088/mcp
   key: langchain-mcp-server
   timeoutSeconds: 30
+  logRequests: false
+  logResponses: false
+jiraMcpClient:
+  # Jira MCP server (mcp-atlassian) started with --transport streamable-http --port 9000.
+  # The Jira url, email and API token live in that server's environment, not here.
+  enabled: true
+  url: http://localhost:9000/mcp
+  key: jira-mcp-server
+  projectKey: DIS
+  timeoutSeconds: 60
+  # read-only tools only, so the model cannot edit tickets; empty list = every tool of the server
+  allowedTools:
+    - jira_search
+    - jira_get_issue
+    - jira_get_agile_boards
+    - jira_get_sprints_from_board
+    - jira_get_sprint_issues
+    - jira_get_board_issues
   logRequests: false
   logResponses: false
 swagger:

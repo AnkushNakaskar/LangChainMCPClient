@@ -3,23 +3,27 @@ package com.langchain.central.service;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import com.langchain.central.agents.SprintAIAgent;
-import com.langchain.central.assistance.GitAssistance;
+import com.langchain.central.config.JiraMcpClientConfig;
 import com.langchain.central.config.LLMConfig;
+import com.langchain.central.mcp_clients.ManagedJiraMcpClient;
 import com.langchain.central.model.AIRequest;
 import com.langchain.central.model.AIResponse;
+import com.langchain.central.model.ToolResponse;
 import com.langchain.central.util.LLMConvertors;
-import dev.langchain4j.data.message.SystemMessage;
-import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.StreamingChatModel;
-import dev.langchain4j.model.chat.request.ChatRequest;
-import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.TokenStream;
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.atomic.AtomicInteger;
 import lombok.extern.slf4j.Slf4j;
 
 /**
+ * Answers sprint questions with {@link SprintAIAgent}, which reads the active sprint through the
+ * Jira MCP tools.
+ *
  * @author ankush.nakaskar
  */
 @Slf4j
@@ -27,66 +31,76 @@ import lombok.extern.slf4j.Slf4j;
 public class SprintAIAgentService {
 
     private final LLMConfig llmConfig;
+    private final JiraMcpClientConfig jiraConfig;
+    private final ManagedJiraMcpClient jiraMcpClient;
 
     @Inject
-    public SprintAIAgentService(final LLMConfig llmConfig) {
+    public SprintAIAgentService(final LLMConfig llmConfig,
+                                final JiraMcpClientConfig jiraConfig,
+                                final ManagedJiraMcpClient jiraMcpClient) {
         this.llmConfig = llmConfig;
+        this.jiraConfig = jiraConfig;
+        this.jiraMcpClient = jiraMcpClient;
     }
-
 
     public AIResponse chatStream(final AIRequest request) {
         final String sessionId = request.getSessionId();
         final long startedAt = System.nanoTime();
-        final StreamingChatModel model = LLMConvertors.toChatModel(llmConfig);
-        SystemMessage systemMessage = SystemMessage.from(GitAssistance.SYSTEM_PROMPT);
-        UserMessage userMessage = UserMessage.from(request.getPrompt());
+        final List<ToolResponse> tools = new CopyOnWriteArrayList<>();
 
-        String mockJiraJson = mockJiraDetailsInput();
-
-        // 3. Define Custom Chat Parameters (Temperature, Max Tokens, etc.)
-        ChatRequestParameters parameters = ChatRequestParameters.builder()
-                .temperature(0.2)           // Deterministic output
-                .maxOutputTokens(100)        // Token limit
-                .build();
-
-        // 4. Combine Messages and Parameters into a ChatRequest
-        ChatRequest chatRequest = ChatRequest.builder()
-                .messages(systemMessage, userMessage)
-                .parameters(parameters)
-                .build();
-        SprintAIAgent agent = AiServices.create(SprintAIAgent.class, model);
-        TokenStream stream = agent.getSprintDetails("SPRINT-42", mockJiraJson, request.getPrompt());
+        final TokenStream stream = sprintAgent()
+                .getSprintDetails(jiraConfig.getProjectKey(), request.getPrompt());
         final CompletableFuture<ChatResponse> futureResponse = new CompletableFuture<>();
-        stream.onCompleteResponse((ChatResponse response) -> futureResponse.complete(response))
-                .onError((Throwable error) -> futureResponse.completeExceptionally(error))
+        final AtomicInteger answerChars = new AtomicInteger();
+        log.info("[sprint:{}] Asking the model about project {}: {}",
+                sessionId, jiraConfig.getProjectKey(), request.getPrompt());
+        stream.beforeToolExecution(before -> log.info("[sprint:{}] {}s Calling Jira tool {} with {}",
+                        sessionId, secondsSince(startedAt), before.request().name(), before.request().arguments()))
+                .onToolExecuted(execution -> {
+                    tools.add(LLMConvertors.toToolResponse(execution));
+                    log.info("[sprint:{}] {}s Jira tool {} returned {} characters{}",
+                            sessionId, secondsSince(startedAt), execution.request().name(),
+                            execution.result() == null ? 0 : execution.result().length(),
+                            execution.hasFailed() ? " (FAILED)" : "");
+                })
+                .onIntermediateResponse(intermediate -> log.info(
+                        "[sprint:{}] {}s Model asked for more tool calls, prompt is now {} tokens",
+                        sessionId, secondsSince(startedAt),
+                        intermediate.tokenUsage() == null ? "?" : intermediate.tokenUsage().inputTokenCount()))
+                .onPartialResponse(partial -> {
+                    if (answerChars.getAndAdd(partial.length()) == 0) {
+                        log.info("[sprint:{}] {}s Model started writing the answer",
+                                sessionId, secondsSince(startedAt));
+                    }
+                })
+                .onCompleteResponse(response -> {
+                    log.info("[sprint:{}] {}s Answer complete: {} characters, {} tokens in total",
+                            sessionId, secondsSince(startedAt), answerChars.get(),
+                            response.tokenUsage() == null ? "?" : response.tokenUsage().totalTokenCount());
+                    futureResponse.complete(response);
+                })
+                .onError(error -> {
+                    log.error("[sprint:{}] {}s Failed: {}", sessionId, secondsSince(startedAt), error.getMessage());
+                    futureResponse.completeExceptionally(error);
+                })
                 .start();
-        final ChatResponse response = futureResponse.join(); // Blocks the main thread until the streaming process is complete
+
+        final ChatResponse response = futureResponse.join();
         final String streamedText = response.aiMessage() == null ? null : response.aiMessage().text();
-        return LLMConvertors.toAIResponse(response, response.tokenUsage(), streamedText, null,
+        return LLMConvertors.toAIResponse(response, response.tokenUsage(), streamedText, tools,
                 llmConfig.getModelName(), sessionId, System.nanoTime() - startedAt);
     }
 
-    private static String mockJiraDetailsInput() {
-        return """
-                {
-                  "sprint": { "id": "SPRINT-42", "name": "Sprint 42 - Payment Gateway Integration", "state": "ACTIVE" },
-                  "teamMembers": ["Alice (Dev)", "Bob (Dev)", "Charlie (QA)", "Diana (PO)"],
-                  "metrics": { "totalTasks": 12, "done": 5, "inProgress": 4, "codeReview": 2, "blocked": 1 },
-                  "epics": [
-                    {
-                      "epicKey": "EPIC-101",
-                      "summary": "Modernize Checkout Pipeline",
-                      "quarterlyGoal": "Q4-OKR-1: Increase Checkout Conversion by 15%",
-                      "yearlyRoadmap": "2026 Architectural Platform Refresh"
-                    }
-                  ],
-                  "issues": [
-                    { "key": "PAY-1", "summary": "Stripe webhook integration", "status": "In Progress", "assignee": "Alice", "epic": "EPIC-101" },
-                    { "key": "PAY-2", "summary": "Fix double charge bug", "status": "Done", "assignee": "Bob", "epic": "EPIC-101" },
-                    { "key": "PAY-3", "summary": "3D Secure auth flow", "status": "Blocked", "assignee": "Alice", "blockerReason": "Waiting on third-party API keys" }
-                  ]
-                }
-                """;
+    private static long secondsSince(final long startedAtNanos) {
+        return (System.nanoTime() - startedAtNanos) / 1_000_000_000L;
     }
 
+    private SprintAIAgent sprintAgent() {
+        final StreamingChatModel model = LLMConvertors.toChatModel(llmConfig);
+        return AiServices.builder(SprintAIAgent.class)
+                .streamingChatModel(model)
+                .toolProvider(jiraMcpClient.toolProvider())
+                .maxToolCallingRoundTrips(llmConfig.getMaxToolCallingRoundTrips())
+                .build();
+    }
 }
