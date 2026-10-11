@@ -33,8 +33,6 @@ public class ManagedMcpClient implements Managed {
         }
 
         final Duration timeout = Duration.ofSeconds(config.getTimeoutSeconds());
-        // streamable HTTP asks the server for text/event-stream, so a tool result arrives as the
-        // server writes it instead of after the whole response body has been buffered
         final var transport = StreamableHttpMcpTransport.builder()
                 .url(config.getUrl())
                 .timeout(timeout)
@@ -50,7 +48,6 @@ public class ManagedMcpClient implements Managed {
                 .initializationTimeout(timeout)
                 .toolExecutionTimeout(timeout)
                 .cacheToolList(true)
-                // relays the server's tool round trips, progress and logs onto the chat stream
                 .addListener(streamEvents)
                 .progressHandler(streamEvents)
                 .logHandler(streamEvents)
@@ -73,9 +70,6 @@ public class ManagedMcpClient implements Managed {
         }
     }
 
-    public boolean isEnabled() {
-        return config.isEnabled();
-    }
 
     public McpToolProvider toolProvider() {
         if (!config.isEnabled()) {

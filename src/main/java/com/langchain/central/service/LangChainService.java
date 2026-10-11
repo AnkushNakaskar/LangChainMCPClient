@@ -6,12 +6,12 @@ import com.langchain.central.assistance.GitAssistance;
 import com.langchain.central.assistance.GitStreamingAssistance;
 import com.langchain.central.config.LLMConfig;
 import com.langchain.central.mcp.ManagedMcpClient;
-import com.langchain.central.memory.ChatMemories;
 import com.langchain.central.model.AIRequest;
 import com.langchain.central.model.AIResponse;
 import com.langchain.central.util.LLMConvertors;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
@@ -36,15 +36,12 @@ public class LangChainService {
 
     private final LLMConfig llmConfig;
     private final ManagedMcpClient mcpClient;
-    private final ChatMemories chatMemories;
 
     @Inject
     public LangChainService(final LLMConfig llmConfig,
-                            final ManagedMcpClient mcpClient,
-                            final ChatMemories chatMemories) {
+                            final ManagedMcpClient mcpClient) {
         this.llmConfig = llmConfig;
         this.mcpClient = mcpClient;
-        this.chatMemories = chatMemories;
     }
 
 
@@ -146,7 +143,8 @@ public class LangChainService {
 
         final AiServices<GitAssistance> builder = AiServices.builder(GitAssistance.class)
                 .streamingChatModel(model)
-                .chatMemoryProvider(chatMemories::of);
+                .chatMemoryProvider(memoryId -> MessageWindowChatMemory.withMaxMessages(10));
+
         builder.toolProvider(mcpClient.toolProvider())
                 .maxToolCallingRoundTrips(llmConfig.getMaxToolCallingRoundTrips());
         return builder.build();
@@ -157,8 +155,7 @@ public class LangChainService {
         final StreamingChatModel model = LLMConvertors.toChatModel(llmConfig);
 
         final AiServices<GitStreamingAssistance> builder = AiServices.builder(GitStreamingAssistance.class)
-                .streamingChatModel(model)
-                .chatMemoryProvider(chatMemories::of);
+                .streamingChatModel(model);
         builder.toolProvider(mcpClient.toolProvider())
                 .maxToolCallingRoundTrips(llmConfig.getMaxToolCallingRoundTrips());
         return builder.build();
