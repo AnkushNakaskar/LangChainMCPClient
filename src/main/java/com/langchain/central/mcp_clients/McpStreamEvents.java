@@ -1,4 +1,4 @@
-package com.langchain.central.mcp;
+package com.langchain.central.mcp_clients;
 
 import com.google.inject.Singleton;
 import com.langchain.central.model.StreamEvent;

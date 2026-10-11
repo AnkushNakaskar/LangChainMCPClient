@@ -5,7 +5,7 @@ import com.google.inject.Singleton;
 import com.langchain.central.assistance.GitAssistance;
 import com.langchain.central.assistance.GitStreamingAssistance;
 import com.langchain.central.config.LLMConfig;
-import com.langchain.central.mcp.ManagedMcpClient;
+import com.langchain.central.mcp_clients.ManagedGitAssistanceMcpClient;
 import com.langchain.central.model.AIRequest;
 import com.langchain.central.model.AIResponse;
 import com.langchain.central.util.LLMConvertors;
@@ -35,13 +35,13 @@ import lombok.extern.slf4j.Slf4j;
 public class LangChainService {
 
     private final LLMConfig llmConfig;
-    private final ManagedMcpClient mcpClient;
+    private final ManagedGitAssistanceMcpClient gitAssistanceMcpClient;
 
     @Inject
     public LangChainService(final LLMConfig llmConfig,
-                            final ManagedMcpClient mcpClient) {
+                            final ManagedGitAssistanceMcpClient gitAssistanceMcpClient) {
         this.llmConfig = llmConfig;
-        this.mcpClient = mcpClient;
+        this.gitAssistanceMcpClient = gitAssistanceMcpClient;
     }
 
 
@@ -145,7 +145,7 @@ public class LangChainService {
                 .streamingChatModel(model)
                 .chatMemoryProvider(memoryId -> MessageWindowChatMemory.withMaxMessages(10));
 
-        builder.toolProvider(mcpClient.toolProvider())
+        builder.toolProvider(gitAssistanceMcpClient.toolProvider())
                 .maxToolCallingRoundTrips(llmConfig.getMaxToolCallingRoundTrips());
         return builder.build();
     }
@@ -156,7 +156,7 @@ public class LangChainService {
 
         final AiServices<GitStreamingAssistance> builder = AiServices.builder(GitStreamingAssistance.class)
                 .streamingChatModel(model);
-        builder.toolProvider(mcpClient.toolProvider())
+        builder.toolProvider(gitAssistanceMcpClient.toolProvider())
                 .maxToolCallingRoundTrips(llmConfig.getMaxToolCallingRoundTrips());
         return builder.build();
     }

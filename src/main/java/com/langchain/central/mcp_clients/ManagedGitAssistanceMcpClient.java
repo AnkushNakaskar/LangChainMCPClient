@@ -1,4 +1,4 @@
-package com.langchain.central.mcp;
+package com.langchain.central.mcp_clients;
 
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
@@ -12,7 +12,7 @@ import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @Singleton
-public class ManagedMcpClient implements Managed {
+public class ManagedGitAssistanceMcpClient implements Managed {
 
     private final McpClientConfig config;
     private final McpStreamEvents streamEvents;
@@ -20,7 +20,7 @@ public class ManagedMcpClient implements Managed {
     private McpToolProvider toolProvider;
 
     @Inject
-    public ManagedMcpClient(final McpClientConfig config, final McpStreamEvents streamEvents) {
+    public ManagedGitAssistanceMcpClient(final McpClientConfig config, final McpStreamEvents streamEvents) {
         this.config = config;
         this.streamEvents = streamEvents;
     }
