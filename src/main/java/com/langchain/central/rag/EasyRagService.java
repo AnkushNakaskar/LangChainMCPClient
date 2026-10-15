@@ -18,6 +18,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.List;
+import java.util.stream.Collectors;
 import javax.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 
@@ -68,7 +69,7 @@ public class EasyRagService {
                 log.warn("Easy RAG loaded zero documents from '{}'.", documentsPath);
                 return;
             }
-
+            log.info("documents are embeded are {}", documents.stream().map(Document::metadata).collect(Collectors.toUnmodifiableList()));
             final EmbeddingStoreIngestor ingestor = EmbeddingStoreIngestor.builder()
                     .embeddingModel(embeddingModel)
                     .embeddingStore(memoryStore)

@@ -42,7 +42,7 @@ mcpClient:
 jiraMcpClient:
   # Jira MCP server (mcp-atlassian) started with --transport streamable-http --port 9000.
   # The Jira url, email and API token live in that server's environment, not here.
-  enabled: true
+  enabled: false
   url: http://localhost:9000/mcp
   key: jira-mcp-server
   projectKey: DIS
@@ -59,8 +59,9 @@ jiraMcpClient:
   logResponses: false
 rag:
   enabled: true
-  documentsPath: /Users/ankush.nakaskar/Office/newCode/personal_projects/LangChainMCPClient/documents
-  embeddingModelName: nomic-embed-text
+  documentsPath: /Users/ankush.nakaskar/Office/newCode/personal_projects/LangChainMCPClient/test_doc
+  # must match the name shown by `ollama list`
+  embeddingModelName: hf.co/Qwen/Qwen3-Embedding-0.6B-GGUF:Q8_0
   maxResults: 5
   minScore: 0.0
 swagger:

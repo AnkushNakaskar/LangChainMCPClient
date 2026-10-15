@@ -3,6 +3,7 @@ package com.langchain.central;
 import com.google.inject.Stage;
 import com.langchain.central.module.CoreModule;
 import com.langchain.central.module.ServiceModule;
+import com.langchain.central.rag.EasyRagService;
 import com.langchain.central.resource.LangChainAgenticAIResource;
 import com.langchain.central.resource.SprintAIAgentResource;
 import in.vectorpro.dropwizard.swagger.SwaggerBundle;
@@ -48,6 +49,9 @@ public class LangchainApp extends Application<BasicConfiguration> {
 
         final var injector = InjectorLookup.getInjector(this)
                 .orElseThrow(() -> new IllegalStateException("Guice injector is not available"));
+
+        injector.getInstance(EasyRagService.class).initialize();
+
         environment.jersey().register(injector.getInstance(LangChainAgenticAIResource.class));
         environment.jersey().register(injector.getInstance(SprintAIAgentResource.class));
 

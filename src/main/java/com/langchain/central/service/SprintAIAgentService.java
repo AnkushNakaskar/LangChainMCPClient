@@ -103,7 +103,7 @@ public class SprintAIAgentService {
         final StreamingChatModel model = LLMConvertors.toChatModel(llmConfig);
         final var builder = AiServices.builder(SprintAIAgent.class)
                 .streamingChatModel(model)
-                .toolProvider(jiraMcpClient.toolProvider())
+//                .toolProvider(jiraMcpClient.toolProvider())
                 .maxToolCallingRoundTrips(llmConfig.getMaxToolCallingRoundTrips());
 
         if (easyRagService.isEnabled()) {

@@ -20,12 +20,12 @@ public class RagConfig {
     @NotBlank
     @JsonProperty("documentsPath")
     @Builder.Default
-    private String documentsPath = "/Users/ankush.nakaskar/Office/newCode/personal_projects/LangChainMCPClient/documents";
+    private String documentsPath = "/Users/ankush.nakaskar/Office/newCode/personal_projects/LangChainMCPClient/test_doc";
 
     @NotBlank
     @JsonProperty("embeddingModelName")
     @Builder.Default
-    private String embeddingModelName = "nomic-embed-text";
+    private String embeddingModelName = "hf.co/Qwen/Qwen3-Embedding-0.6B-GGUF:Q8_0";
 
     @JsonProperty("maxResults")
     @Builder.Default
