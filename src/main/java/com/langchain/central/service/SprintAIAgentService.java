@@ -9,6 +9,7 @@ import com.langchain.central.mcp_clients.ManagedJiraMcpClient;
 import com.langchain.central.model.AIRequest;
 import com.langchain.central.model.AIResponse;
 import com.langchain.central.model.ToolResponse;
+import com.langchain.central.rag.EasyRagService;
 import com.langchain.central.util.LLMConvertors;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.response.ChatResponse;
@@ -33,14 +34,17 @@ public class SprintAIAgentService {
     private final LLMConfig llmConfig;
     private final JiraMcpClientConfig jiraConfig;
     private final ManagedJiraMcpClient jiraMcpClient;
+    private final EasyRagService easyRagService;
 
     @Inject
     public SprintAIAgentService(final LLMConfig llmConfig,
                                 final JiraMcpClientConfig jiraConfig,
-                                final ManagedJiraMcpClient jiraMcpClient) {
+                                final ManagedJiraMcpClient jiraMcpClient,
+                                final EasyRagService easyRagService) {
         this.llmConfig = llmConfig;
         this.jiraConfig = jiraConfig;
         this.jiraMcpClient = jiraMcpClient;
+        this.easyRagService = easyRagService;
     }
 
     public AIResponse chatStream(final AIRequest request) {
@@ -97,10 +101,15 @@ public class SprintAIAgentService {
 
     private SprintAIAgent sprintAgent() {
         final StreamingChatModel model = LLMConvertors.toChatModel(llmConfig);
-        return AiServices.builder(SprintAIAgent.class)
+        final var builder = AiServices.builder(SprintAIAgent.class)
                 .streamingChatModel(model)
                 .toolProvider(jiraMcpClient.toolProvider())
-                .maxToolCallingRoundTrips(llmConfig.getMaxToolCallingRoundTrips())
-                .build();
+                .maxToolCallingRoundTrips(llmConfig.getMaxToolCallingRoundTrips());
+
+        if (easyRagService.isEnabled()) {
+            builder.contentRetriever(easyRagService.contentRetriever());
+        }
+
+        return builder.build();
     }
 }

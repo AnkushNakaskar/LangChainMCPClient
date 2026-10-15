@@ -57,6 +57,12 @@ jiraMcpClient:
     - jira_get_board_issues
   logRequests: false
   logResponses: false
+rag:
+  enabled: true
+  documentsPath: /Users/ankush.nakaskar/Office/newCode/personal_projects/LangChainMCPClient/documents
+  embeddingModelName: nomic-embed-text
+  maxResults: 5
+  minScore: 0.0
 swagger:
   resourcePackage: com.langchain.central.resource
 logging:

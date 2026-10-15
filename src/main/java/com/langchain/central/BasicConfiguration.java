@@ -5,6 +5,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.langchain.central.config.JiraMcpClientConfig;
 import com.langchain.central.config.LLMConfig;
 import com.langchain.central.config.McpClientConfig;
+import com.langchain.central.config.RagConfig;
 import in.vectorpro.dropwizard.swagger.SwaggerBundleConfiguration;
 import io.dropwizard.Configuration;
 import javax.validation.Valid;
@@ -36,6 +37,10 @@ public class BasicConfiguration extends Configuration {
     @Valid
     @NotNull
     private JiraMcpClientConfig jiraMcpClient = new JiraMcpClientConfig();
+
+    @Valid
+    @NotNull
+    private RagConfig rag = new RagConfig();
 
     private String baseName ="resource";
 
